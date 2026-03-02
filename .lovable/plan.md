@@ -1,26 +1,38 @@
 
 
-# Italicize All Mock Data
+# Authentication Setup
 
-All data currently displayed comes from static files (`src/data/dashboard.ts` and `src/data/platforms.ts`) — none of it is wired to Supabase yet. The approach is to create a small utility wrapper component and apply italic styling to all mock/static values across the two active pages.
+Since this is a single-user internal tool, the setup will be simple: email/password auth with no profiles table needed.
 
-## Approach
+## Implementation
 
-1. **Create a `<MockData>` wrapper component** — a simple `<span className="italic opacity-80">` wrapper that visually marks any value as mock data. This makes it easy to later find and replace with real data (just search for `MockData` usage).
+### 1. Auth Context (`src/contexts/AuthContext.tsx`)
+- Create an `AuthProvider` wrapping the app with `onAuthStateChange` listener (set up before `getSession()`)
+- Expose `user`, `session`, `signIn`, `signUp`, `signOut`, and `loading` state
 
-2. **Dashboard page (`src/pages/Dashboard.tsx`)** — Wrap all dynamic values in `MockData`:
-   - Stat card values (7, 12, 64%, 24,847)
-   - Identity dimension labels and percentages
-   - Processing queue items and progress values
-   - System status values (model name, DB, version, last updated)
-   - Knowledge base stat values
-   - Next steps list items
-   - Platform grid data (names, statuses, percentages)
+### 2. Login Page (`src/pages/Auth.tsx`)
+- Single page with email/password sign-in form
+- Include a sign-up tab for initial account creation
+- Include forgot password flow with `resetPasswordForEmail`
+- Styled to match the dark theme
 
-3. **Platforms page (`src/pages/Platforms.tsx`)** — Wrap mock values:
-   - Platform count summary line
-   - Platform card content (names, descriptions, statuses, insight percentages)
-   - Detail panel content (description, data types, export instructions, analysis capabilities)
+### 3. Reset Password Page (`src/pages/ResetPassword.tsx`)
+- Public route at `/reset-password`
+- Detects `type=recovery` from URL hash
+- Form to set new password via `supabase.auth.updateUser()`
 
-This is a lightweight visual change — just wrapping text in italic spans. When data gets wired to Supabase, you remove the `MockData` wrapper from each value.
+### 4. Protected Routes (`src/components/ProtectedRoute.tsx`)
+- Wrapper component that redirects to `/auth` if not authenticated
+- Shows loading state while session is being resolved
+
+### 5. App.tsx Updates
+- Wrap app in `AuthProvider`
+- `/auth` and `/reset-password` are public routes
+- All other routes wrapped in `ProtectedRoute`
+- Add sign-out button to the Layout header
+
+### 6. Layout Update
+- Replace "System Online" indicator with user email and a sign-out button
+
+No database migration needed — all existing tables already reference `auth.users(id)` via `user_id` columns and RLS policies use `auth.uid()`.
 
