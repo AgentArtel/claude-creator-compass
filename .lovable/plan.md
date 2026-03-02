@@ -1,38 +1,28 @@
 
 
-# Authentication Setup
+# Wire Platforms Page to Supabase
 
-Since this is a single-user internal tool, the setup will be simple: email/password auth with no profiles table needed.
+## What Changes
 
-## Implementation
+1. **Create `src/hooks/usePlatforms.ts`** — A React Query hook that fetches from the `platforms` table via `supabase.from('platforms').select('*')`. Maps the DB row shape (snake_case JSONB fields like `data_types`, `export_instructions`, `analysis_capabilities`, `insight_potential`) to the frontend `Platform` type. Also fetches the user's `platform_imports` to determine per-platform status.
 
-### 1. Auth Context (`src/contexts/AuthContext.tsx`)
-- Create an `AuthProvider` wrapping the app with `onAuthStateChange` listener (set up before `getSession()`)
-- Expose `user`, `session`, `signIn`, `signUp`, `signOut`, and `loading` state
+2. **Update `src/pages/Platforms.tsx`** — Replace `import { platforms } from "@/data/platforms"` with the `usePlatforms` hook. Show a loading skeleton while fetching. Remove `MockData` wrappers from platform data (it's now real). Keep the `statusSteps` and `advanceStatus` logic but wire it to update `platform_imports` in Supabase instead of local state.
 
-### 2. Login Page (`src/pages/Auth.tsx`)
-- Single page with email/password sign-in form
-- Include a sign-up tab for initial account creation
-- Include forgot password flow with `resetPasswordForEmail`
-- Styled to match the dark theme
+3. **Update `src/pages/Dashboard.tsx`** — Replace `import { platforms } from "@/data/platforms"` with the same hook for the "Data Sources" grid section. Remove `MockData` wrappers from platform-sourced values.
 
-### 3. Reset Password Page (`src/pages/ResetPassword.tsx`)
-- Public route at `/reset-password`
-- Detects `type=recovery` from URL hash
-- Form to set new password via `supabase.auth.updateUser()`
+4. **Update `src/data/platforms.ts`** — Keep only the type definitions (`Platform`, `PlatformStatus`, `statusLabels`, `statusColors`, `platformCategories`) and remove the hardcoded `platforms` array. The DB `platform_category` enum uses lowercase (`core`, `social`, etc.) so the category filter labels will map from lowercase DB values to display labels.
 
-### 4. Protected Routes (`src/components/ProtectedRoute.tsx`)
-- Wrapper component that redirects to `/auth` if not authenticated
-- Shows loading state while session is being resolved
+## Key Mapping (DB → Frontend)
 
-### 5. App.tsx Updates
-- Wrap app in `AuthProvider`
-- `/auth` and `/reset-password` are public routes
-- All other routes wrapped in `ProtectedRoute`
-- Add sign-out button to the Layout header
+- `data_types` (JSONB array) → `dataTypes: string[]`
+- `export_instructions` (JSONB array) → `exportInstructions: string[]`
+- `analysis_capabilities` (JSONB array) → `analysisCapabilities: string[]`
+- `insight_potential` (int) → `insightPotential: number`
+- `category` (enum, lowercase) → displayed with capitalize
+- Status comes from `platform_imports` table (latest import per platform), defaulting to `'not_started'` if no import exists
 
-### 6. Layout Update
-- Replace "System Online" indicator with user email and a sign-out button
+## Files
 
-No database migration needed — all existing tables already reference `auth.users(id)` via `user_id` columns and RLS policies use `auth.uid()`.
+- **New**: `src/hooks/usePlatforms.ts`
+- **Edit**: `src/pages/Platforms.tsx`, `src/pages/Dashboard.tsx`, `src/data/platforms.ts`
 
