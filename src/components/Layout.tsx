@@ -19,9 +19,9 @@ const navItems = [
   { to: "/platforms", label: "Platforms", icon: Globe },
   { to: "/local-agent", label: "Local Agent", icon: FolderSearch, disabled: true },
   { to: "/pipeline", label: "Pipeline", icon: Workflow, disabled: true },
-  { to: "/profile", label: "Profile", icon: User, disabled: true },
-  { to: "/knowledge", label: "Knowledge", icon: Database, disabled: true },
-  { to: "/agents", label: "Agents", icon: Bot, disabled: true },
+  { to: "/profile", label: "Profile", icon: User },
+  { to: "/knowledge", label: "Knowledge", icon: Database },
+  { to: "/agents", label: "Agents", icon: Bot },
   { to: "/mcp", label: "MCP", icon: Plug, disabled: true },
 ];
 

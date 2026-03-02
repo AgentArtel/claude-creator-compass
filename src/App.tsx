@@ -8,6 +8,9 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Layout } from "@/components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Platforms from "./pages/Platforms";
+import Profile from "./pages/Profile";
+import Knowledge from "./pages/Knowledge";
+import Agents from "./pages/Agents";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -32,6 +35,9 @@ const App = () => (
                     <Routes>
                       <Route path="/" element={<Dashboard />} />
                       <Route path="/platforms" element={<Platforms />} />
+                      <Route path="/profile" element={<Profile />} />
+                      <Route path="/knowledge" element={<Knowledge />} />
+                      <Route path="/agents" element={<Agents />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </Layout>
