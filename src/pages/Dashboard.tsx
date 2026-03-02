@@ -3,7 +3,8 @@ import {
   Globe, Database as DatabaseIcon, UserCheck, Zap, 
   ArrowUpRight, Clock, Server, Activity
 } from "lucide-react";
-import { identityStats, identityDimensions, processingQueue, systemStatus, knowledgeBaseStats } from "@/data/dashboard";
+import { identityDimensions, systemStatus } from "@/data/dashboard";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { usePlatforms } from "@/hooks/usePlatforms";
 import { cn } from "@/lib/utils";
 import { MockData } from "@/components/MockData";
@@ -14,8 +15,8 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 };
 
-function StatCard({ icon: Icon, label, value, suffix, color, delay }: {
-  icon: React.ElementType; label: string; value: number | string; suffix?: string; color: string; delay: number;
+function StatCard({ icon: Icon, label, value, suffix, color, delay, loading }: {
+  icon: React.ElementType; label: string; value: number | string; suffix?: string; color: string; delay: number; loading?: boolean;
 }) {
   return (
     <motion.div
@@ -31,9 +32,13 @@ function StatCard({ icon: Icon, label, value, suffix, color, delay }: {
         </div>
         <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground" />
       </div>
-      <div className="font-heading text-2xl font-bold text-foreground">
-        <MockData>{value}{suffix}</MockData>
-      </div>
+      {loading ? (
+        <Skeleton className="h-8 w-20 mb-1" />
+      ) : (
+        <div className="font-heading text-2xl font-bold text-foreground">
+          {value}{suffix}
+        </div>
+      )}
       <div className="text-xs text-muted-foreground mt-0.5 font-mono uppercase tracking-wider">
         {label}
       </div>
@@ -70,7 +75,12 @@ function DimensionBar({ label, value, color, delay }: {
 
 export default function Dashboard() {
   const { data: platforms = [], isLoading: platformsLoading } = usePlatforms();
+  const { data: dashData, isLoading: statsLoading } = useDashboardStats();
   const topPlatforms = platforms.filter(p => p.status !== 'not_started').slice(0, 9);
+
+  const stats = dashData?.stats;
+  const knowledgeBase = dashData?.knowledgeBase;
+  const queue = dashData?.queue ?? [];
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -87,10 +97,10 @@ export default function Dashboard() {
         <div className="col-span-12 lg:col-span-8 space-y-6">
           {/* Stat cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard icon={Globe} label="Platforms Connected" value={identityStats.platformsConnected} color="hsl(217, 91%, 60%)" delay={0.05} />
-            <StatCard icon={DatabaseIcon} label="Sources Processed" value={identityStats.dataSourcesProcessed} color="hsl(263, 70%, 50%)" delay={0.1} />
-            <StatCard icon={UserCheck} label="Profile Completion" value={identityStats.profileCompletion} suffix="%" color="hsl(160, 84%, 39%)" delay={0.15} />
-            <StatCard icon={Zap} label="Knowledge Vectors" value={identityStats.knowledgeVectors.toLocaleString()} color="hsl(36, 100%, 44%)" delay={0.2} />
+            <StatCard icon={Globe} label="Platforms Connected" value={stats?.platformsConnected ?? 0} color="hsl(217, 91%, 60%)" delay={0.05} loading={statsLoading} />
+            <StatCard icon={DatabaseIcon} label="Sources Processed" value={stats?.dataSourcesProcessed ?? 0} color="hsl(263, 70%, 50%)" delay={0.1} loading={statsLoading} />
+            <StatCard icon={UserCheck} label="Profile Completion" value={stats?.profileCompletion ?? 0} suffix="%" color="hsl(160, 84%, 39%)" delay={0.15} loading={statsLoading} />
+            <StatCard icon={Zap} label="Knowledge Vectors" value={(stats?.knowledgeVectors ?? 0).toLocaleString()} color="hsl(36, 100%, 44%)" delay={0.2} loading={statsLoading} />
           </div>
 
           {/* Identity Dimensions */}
@@ -179,27 +189,35 @@ export default function Dashboard() {
               <Activity className="w-3.5 h-3.5 text-secondary" />
               <h3 className="text-xs font-heading font-semibold text-foreground uppercase tracking-wider">Processing Queue</h3>
             </div>
-            <div className="space-y-3">
-              {processingQueue.map((item) => (
-                <div key={item.source} className="space-y-1.5">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-foreground"><MockData>{item.source}</MockData></span>
-                    <span className="text-[10px] font-mono text-muted-foreground">
-                      <MockData>{item.status === 'processing' ? `${item.progress}%` : 'Queued'}</MockData>
-                    </span>
+            {statsLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-8" />)}
+              </div>
+            ) : queue.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No items in queue</p>
+            ) : (
+              <div className="space-y-3">
+                {queue.map((item, i) => (
+                  <div key={i} className="space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-foreground">{item.source}</span>
+                      <span className="text-[10px] font-mono text-muted-foreground">
+                        {item.status === 'processing' ? `${item.progress}%` : item.status.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <div className="h-1 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={cn(
+                          "h-full rounded-full transition-all",
+                          item.status === 'processing' ? "bg-secondary" : "bg-muted-foreground/20"
+                        )}
+                        style={{ width: `${item.progress}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-1 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className={cn(
-                        "h-full rounded-full transition-all",
-                        item.status === 'processing' ? "bg-secondary" : "bg-muted-foreground/20"
-                      )}
-                      style={{ width: `${item.progress}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </motion.div>
 
           {/* Knowledge Base Stats */}
@@ -211,18 +229,24 @@ export default function Dashboard() {
               <DatabaseIcon className="w-3.5 h-3.5 text-accent" />
               <h3 className="text-xs font-heading font-semibold text-foreground uppercase tracking-wider">Knowledge Base</h3>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {Object.entries(knowledgeBaseStats).map(([key, value]) => (
-                <div key={key}>
-                  <div className="text-lg font-heading font-bold text-foreground">
-                    <MockData>{typeof value === 'number' ? value.toLocaleString() : value}</MockData>
+            {statsLoading ? (
+              <div className="grid grid-cols-2 gap-3">
+                {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12" />)}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {Object.entries(knowledgeBase ?? { vectorChunks: 0, platforms: 0, dateRange: 'No data', dimensions: 1536 }).map(([key, value]) => (
+                  <div key={key}>
+                    <div className="text-lg font-heading font-bold text-foreground">
+                      {typeof value === 'number' ? value.toLocaleString() : value}
+                    </div>
+                    <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+                      {key.replace(/([A-Z])/g, ' $1').trim()}
+                    </div>
                   </div>
-                  <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
-                    {key.replace(/([A-Z])/g, ' $1').trim()}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </motion.div>
 
           {/* Quick actions */}
