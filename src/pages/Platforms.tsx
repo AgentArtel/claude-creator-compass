@@ -1,14 +1,16 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ExternalLink, ChevronRight, Upload, Play, CheckCircle2, Clock, X } from "lucide-react";
+import { ArrowLeft, ExternalLink, ChevronRight, Upload, Play, CheckCircle2, Clock, X, Loader2 } from "lucide-react";
 import { platformCategories, statusLabels, type Platform, type PlatformStatus } from "@/data/platforms";
 import { usePlatforms } from "@/hooks/usePlatforms";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 const statusSteps: PlatformStatus[] = ['not_started', 'exporting', 'uploaded', 'processing', 'indexed'];
 
@@ -73,11 +75,13 @@ function PlatformCard({ platform, onClick }: { platform: Platform; onClick: () =
   );
 }
 
-function PlatformDetail({ platform, onClose, onAdvanceStatus }: {
-  platform: Platform; onClose: () => void; onAdvanceStatus: () => void;
+function PlatformDetail({ platform, onClose, onAdvanceStatus, onFileUpload }: {
+  platform: Platform; onClose: () => void; onAdvanceStatus: () => void; onFileUpload: (file: File) => Promise<void>;
 }) {
   const currentStep = statusSteps.indexOf(platform.status);
-  const nextStatus = currentStep < statusSteps.length - 1 ? statusSteps[currentStep + 1] : null;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const actionLabels: Record<PlatformStatus, { label: string; icon: React.ElementType }> = {
     not_started: { label: 'Mark as Exporting', icon: Clock },
@@ -88,6 +92,36 @@ function PlatformDetail({ platform, onClose, onAdvanceStatus }: {
   };
 
   const action = actionLabels[platform.status];
+
+  const handleActionClick = () => {
+    if (platform.status === 'exporting') {
+      fileInputRef.current?.click();
+    } else {
+      onAdvanceStatus();
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadProgress(10);
+    try {
+      // Simulate progress since Supabase JS doesn't expose upload progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => Math.min(prev + 15, 85));
+      }, 300);
+      await onFileUpload(file);
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+    } catch {
+      // error handled by parent
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   return (
     <motion.div
@@ -178,13 +212,30 @@ function PlatformDetail({ platform, onClose, onAdvanceStatus }: {
           </div>
         </div>
 
+        {uploading && (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              Uploading...
+            </div>
+            <Progress value={uploadProgress} className="h-2" />
+          </div>
+        )}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+
         <Button
           className="w-full"
-          onClick={nextStatus ? onAdvanceStatus : undefined}
-          disabled={platform.status === 'indexed' || platform.status === 'processing'}
+          onClick={handleActionClick}
+          disabled={platform.status === 'indexed' || platform.status === 'processing' || uploading}
         >
-          <action.icon className="w-4 h-4" />
-          {action.label}
+          {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <action.icon className="w-4 h-4" />}
+          {uploading ? 'Uploading...' : action.label}
         </Button>
       </div>
     </motion.div>
@@ -236,6 +287,46 @@ export default function Platforms() {
 
     queryClient.invalidateQueries({ queryKey: ['platforms'] });
   }, [selectedId, platformData, queryClient]);
+
+  const handleFileUpload = useCallback(async (file: File) => {
+    if (!selectedId) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { toast.error('You must be logged in'); return; }
+
+    const filePath = `${user.id}/${selectedId}/${file.name}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('data-exports')
+      .upload(filePath, file, { upsert: true });
+
+    if (uploadError) {
+      toast.error(`Upload failed: ${uploadError.message}`);
+      throw uploadError;
+    }
+
+    // Find the latest import row for this platform
+    const { data: imports } = await supabase
+      .from('platform_imports')
+      .select('id')
+      .eq('platform_id', selectedId)
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (imports?.[0]) {
+      await supabase
+        .from('platform_imports')
+        .update({
+          status: 'uploaded' as any,
+          file_path: filePath,
+          file_size_bytes: file.size,
+        })
+        .eq('id', imports[0].id);
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['platforms'] });
+    toast.success(`${file.name} uploaded successfully`);
+  }, [selectedId, queryClient]);
 
   const filtered = filterCategory === 'All'
     ? platformData
@@ -306,6 +397,7 @@ export default function Platforms() {
                   platform={selected}
                   onClose={() => setSelectedId(null)}
                   onAdvanceStatus={advanceStatus}
+                  onFileUpload={handleFileUpload}
                 />
               </div>
             </div>
