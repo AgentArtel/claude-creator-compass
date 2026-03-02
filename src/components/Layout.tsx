@@ -1,5 +1,7 @@
 import { NavLink } from "@/components/NavLink";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
 import { 
   LayoutDashboard, 
   Globe, 
@@ -8,7 +10,8 @@ import {
   User, 
   Database, 
   Bot, 
-  Plug 
+  Plug,
+  LogOut
 } from "lucide-react";
 
 const navItems = [
@@ -23,6 +26,8 @@ const navItems = [
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  const { user, signOut } = useAuth();
+
   return (
     <div className="min-h-screen bg-background grid-overlay scanline relative">
       {/* Header */}
@@ -68,8 +73,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="ml-auto flex items-center gap-3">
             <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse-slow" />
-              <span className="text-xs font-mono text-muted-foreground">System Online</span>
+              <span className="text-xs font-mono text-muted-foreground">{user?.email ?? "System Online"}</span>
             </div>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={signOut}>
+              <LogOut className="w-3.5 h-3.5" />
+            </Button>
           </div>
         </div>
       </header>
