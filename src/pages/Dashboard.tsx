@@ -4,9 +4,10 @@ import {
   ArrowUpRight, Clock, Server, Activity
 } from "lucide-react";
 import { identityStats, identityDimensions, processingQueue, systemStatus, knowledgeBaseStats } from "@/data/dashboard";
-import { platforms } from "@/data/platforms";
+import { usePlatforms } from "@/hooks/usePlatforms";
 import { cn } from "@/lib/utils";
 import { MockData } from "@/components/MockData";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const fadeUp = {
   initial: { opacity: 0, y: 10 },
@@ -68,6 +69,7 @@ function DimensionBar({ label, value, color, delay }: {
 }
 
 export default function Dashboard() {
+  const { data: platforms = [], isLoading: platformsLoading } = usePlatforms();
   const topPlatforms = platforms.filter(p => p.status !== 'not_started').slice(0, 9);
 
   return (
@@ -113,31 +115,37 @@ export default function Dashboard() {
               <h2 className="text-sm font-heading font-semibold text-foreground">Data Sources</h2>
               <a href="/platforms" className="text-xs text-primary hover:underline">View all →</a>
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              {topPlatforms.map((platform) => (
-                <div
-                  key={platform.id}
-                  className="rounded-md border border-border/30 bg-muted/30 p-3 hover:border-border/60 transition-colors cursor-pointer group"
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-lg">{platform.icon}</span>
-                    <span className="text-xs font-medium text-foreground truncate"><MockData>{platform.name}</MockData></span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <div
-                        className="w-1.5 h-1.5 rounded-full"
-                        style={{ backgroundColor: platform.status === 'indexed' ? 'hsl(160, 84%, 39%)' : platform.status === 'processing' ? 'hsl(263, 70%, 50%)' : 'hsl(36, 100%, 44%)' }}
-                      />
-                      <span className="text-[10px] font-mono text-muted-foreground capitalize">
-                        <MockData>{platform.status.replace('_', ' ')}</MockData>
-                      </span>
+            {platformsLoading ? (
+              <div className="grid grid-cols-3 gap-3">
+                {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-md" />)}
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-3">
+                {topPlatforms.map((platform) => (
+                  <div
+                    key={platform.id}
+                    className="rounded-md border border-border/30 bg-muted/30 p-3 hover:border-border/60 transition-colors cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-lg">{platform.icon}</span>
+                      <span className="text-xs font-medium text-foreground truncate">{platform.name}</span>
                     </div>
-                    <span className="text-[10px] font-mono text-muted-foreground"><MockData>{platform.insightPotential}%</MockData></span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        <div
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{ backgroundColor: platform.status === 'indexed' ? 'hsl(160, 84%, 39%)' : platform.status === 'processing' ? 'hsl(263, 70%, 50%)' : 'hsl(36, 100%, 44%)' }}
+                        />
+                        <span className="text-[10px] font-mono text-muted-foreground capitalize">
+                          {platform.status.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono text-muted-foreground">{platform.insightPotential}%</span>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </motion.div>
         </div>
 

@@ -1,13 +1,24 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, ExternalLink, ChevronRight, Upload, Play, CheckCircle2, Clock, X } from "lucide-react";
-import { platforms, platformCategories, statusLabels, type Platform, type PlatformStatus } from "@/data/platforms";
+import { platformCategories, statusLabels, type Platform, type PlatformStatus } from "@/data/platforms";
+import { usePlatforms } from "@/hooks/usePlatforms";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MockData } from "@/components/MockData";
+import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 const statusSteps: PlatformStatus[] = ['not_started', 'exporting', 'uploaded', 'processing', 'indexed'];
+
+const importStatusMap: Record<PlatformStatus, string> = {
+  not_started: 'pending',
+  exporting: 'exporting',
+  uploaded: 'uploaded',
+  processing: 'processing',
+  indexed: 'processed',
+};
 
 function StatusBadge({ status }: { status: PlatformStatus }) {
   const colorMap: Record<PlatformStatus, string> = {
@@ -19,7 +30,7 @@ function StatusBadge({ status }: { status: PlatformStatus }) {
   };
   return (
     <span className={cn("text-[10px] font-mono px-2 py-0.5 rounded-full border", colorMap[status])}>
-      <MockData>{statusLabels[status]}</MockData>
+      {statusLabels[status]}
     </span>
   );
 }
@@ -42,20 +53,20 @@ function PlatformCard({ platform, onClick }: { platform: Platform; onClick: () =
             {platform.icon}
           </div>
           <div>
-            <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors"><MockData>{platform.name}</MockData></div>
-            <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider"><MockData>{platform.category}</MockData></div>
+            <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">{platform.name}</div>
+            <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">{platform.category}</div>
           </div>
         </div>
         <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
       </div>
-      <p className="text-xs text-muted-foreground mb-3 line-clamp-2"><MockData>{platform.description}</MockData></p>
+      <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{platform.description}</p>
       <div className="flex items-center justify-between">
         <StatusBadge status={platform.status} />
         <div className="flex items-center gap-1">
           <div className="h-1 w-12 rounded-full bg-muted overflow-hidden">
             <div className="h-full rounded-full bg-primary" style={{ width: `${platform.insightPotential}%` }} />
           </div>
-          <span className="text-[10px] font-mono text-muted-foreground"><MockData>{platform.insightPotential}%</MockData></span>
+          <span className="text-[10px] font-mono text-muted-foreground">{platform.insightPotential}%</span>
         </div>
       </div>
     </motion.div>
@@ -85,7 +96,6 @@ function PlatformDetail({ platform, onClose, onAdvanceStatus }: {
       exit={{ opacity: 0, x: 20 }}
       className="rounded-lg border border-border/50 bg-card overflow-hidden"
     >
-      {/* Header */}
       <div className="p-5 border-b border-border/30">
         <div className="flex items-center justify-between mb-3">
           <button onClick={onClose} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
@@ -104,9 +114,9 @@ function PlatformDetail({ platform, onClose, onAdvanceStatus }: {
             {platform.icon}
           </div>
           <div>
-            <h2 className="text-lg font-heading font-bold text-foreground"><MockData>{platform.name}</MockData></h2>
+            <h2 className="text-lg font-heading font-bold text-foreground">{platform.name}</h2>
             <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-[10px] font-mono text-muted-foreground uppercase"><MockData>{platform.category}</MockData></span>
+              <span className="text-[10px] font-mono text-muted-foreground uppercase">{platform.category}</span>
               <StatusBadge status={platform.status} />
             </div>
           </div>
@@ -114,7 +124,6 @@ function PlatformDetail({ platform, onClose, onAdvanceStatus }: {
       </div>
 
       <div className="p-5 space-y-5">
-        {/* Pipeline progress */}
         <div>
           <h3 className="text-xs font-heading font-semibold text-foreground uppercase tracking-wider mb-3">Pipeline Status</h3>
           <div className="flex items-center gap-1">
@@ -134,46 +143,41 @@ function PlatformDetail({ platform, onClose, onAdvanceStatus }: {
           </div>
         </div>
 
-        {/* Description */}
         <div>
           <h3 className="text-xs font-heading font-semibold text-foreground uppercase tracking-wider mb-2">About</h3>
-          <p className="text-sm text-muted-foreground"><MockData>{platform.description}</MockData></p>
+          <p className="text-sm text-muted-foreground">{platform.description}</p>
         </div>
 
-        {/* Data Types */}
         <div>
           <h3 className="text-xs font-heading font-semibold text-foreground uppercase tracking-wider mb-2">Data Types</h3>
           <div className="flex flex-wrap gap-1.5">
             {platform.dataTypes.map(dt => (
-              <Badge key={dt} variant="outline" className="text-[10px] font-mono"><MockData>{dt}</MockData></Badge>
+              <Badge key={dt} variant="outline" className="text-[10px] font-mono">{dt}</Badge>
             ))}
           </div>
         </div>
 
-        {/* Export Instructions */}
         <div>
           <h3 className="text-xs font-heading font-semibold text-foreground uppercase tracking-wider mb-2">Export Instructions</h3>
           <ol className="space-y-1">
             {platform.exportInstructions.map((step, i) => (
               <li key={i} className="text-xs text-muted-foreground flex gap-2">
                 <span className="font-mono text-primary">{i + 1}.</span>
-                <MockData>{step}</MockData>
+                {step}
               </li>
             ))}
           </ol>
         </div>
 
-        {/* Analysis Capabilities */}
         <div>
           <h3 className="text-xs font-heading font-semibold text-foreground uppercase tracking-wider mb-2">Analysis Capabilities</h3>
           <div className="flex flex-wrap gap-1.5">
             {platform.analysisCapabilities.map(cap => (
-              <span key={cap} className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-secondary/10 text-secondary border border-secondary/20"><MockData>{cap}</MockData></span>
+              <span key={cap} className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-secondary/10 text-secondary border border-secondary/20">{cap}</span>
             ))}
           </div>
         </div>
 
-        {/* Action */}
         <Button
           className="w-full"
           onClick={nextStatus ? onAdvanceStatus : undefined}
@@ -188,21 +192,50 @@ function PlatformDetail({ platform, onClose, onAdvanceStatus }: {
 }
 
 export default function Platforms() {
-  const [platformData, setPlatformData] = useState(platforms);
+  const { data: platformData = [], isLoading } = usePlatforms();
+  const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>('All');
 
   const selected = platformData.find(p => p.id === selectedId) || null;
 
-  const advanceStatus = useCallback(() => {
+  const advanceStatus = useCallback(async () => {
     if (!selectedId) return;
-    setPlatformData(prev => prev.map(p => {
-      if (p.id !== selectedId) return p;
-      const idx = statusSteps.indexOf(p.status);
-      if (idx >= statusSteps.length - 1) return p;
-      return { ...p, status: statusSteps[idx + 1] };
-    }));
-  }, [selectedId]);
+    const platform = platformData.find(p => p.id === selectedId);
+    if (!platform) return;
+    const idx = statusSteps.indexOf(platform.status);
+    if (idx >= statusSteps.length - 1) return;
+    const nextStatus = statusSteps[idx + 1];
+    const dbStatus = importStatusMap[nextStatus];
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    if (platform.status === 'not_started') {
+      await supabase.from('platform_imports').insert({
+        platform_id: platform.id,
+        user_id: user.id,
+        status: dbStatus as any,
+      });
+    } else {
+      // Update latest import
+      const { data: imports } = await supabase
+        .from('platform_imports')
+        .select('id')
+        .eq('platform_id', platform.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (imports?.[0]) {
+        await supabase
+          .from('platform_imports')
+          .update({ status: dbStatus as any })
+          .eq('id', imports[0].id);
+      }
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['platforms'] });
+  }, [selectedId, platformData, queryClient]);
 
   const filtered = filterCategory === 'All'
     ? platformData
@@ -214,23 +247,33 @@ export default function Platforms() {
     return acc;
   }, [] as { category: string; items: Platform[] }[]);
 
+  if (isLoading) {
+    return (
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div><Skeleton className="h-8 w-48" /><Skeleton className="h-4 w-64 mt-2" /></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-lg" />)}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         <h1 className="text-2xl font-heading font-bold text-foreground">Data Platforms</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          <MockData>{platformData.length} platforms • {platformData.filter(p => p.status === 'indexed').length} indexed • {platformData.filter(p => p.status !== 'not_started').length} active</MockData>
+          {platformData.length} platforms • {platformData.filter(p => p.status === 'indexed').length} indexed • {platformData.filter(p => p.status !== 'not_started').length} active
         </p>
       </motion.div>
 
-      {/* Category filter */}
       <div className="flex items-center gap-1.5 flex-wrap">
         {['All', ...platformCategories].map(cat => (
           <button
             key={cat}
             onClick={() => setFilterCategory(cat)}
             className={cn(
-              "px-3 py-1 text-xs font-mono rounded-full border transition-colors",
+              "px-3 py-1 text-xs font-mono rounded-full border transition-colors capitalize",
               filterCategory === cat
                 ? "bg-primary/10 border-primary/30 text-primary"
                 : "border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
@@ -242,7 +285,6 @@ export default function Platforms() {
       </div>
 
       <div className="grid grid-cols-12 gap-6">
-        {/* Platform list */}
         <div className={cn("space-y-6", selected ? "col-span-12 lg:col-span-7" : "col-span-12")}>
           {grouped.map(({ category, items }) => (
             <div key={category}>
@@ -256,7 +298,6 @@ export default function Platforms() {
           ))}
         </div>
 
-        {/* Detail panel */}
         <AnimatePresence>
           {selected && (
             <div className="col-span-12 lg:col-span-5">
