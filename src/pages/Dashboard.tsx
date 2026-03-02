@@ -6,6 +6,7 @@ import {
 import { identityStats, identityDimensions, processingQueue, systemStatus, knowledgeBaseStats } from "@/data/dashboard";
 import { platforms } from "@/data/platforms";
 import { cn } from "@/lib/utils";
+import { MockData } from "@/components/MockData";
 
 const fadeUp = {
   initial: { opacity: 0, y: 10 },
@@ -30,7 +31,7 @@ function StatCard({ icon: Icon, label, value, suffix, color, delay }: {
         <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground" />
       </div>
       <div className="font-heading text-2xl font-bold text-foreground">
-        {value}{suffix}
+        <MockData>{value}{suffix}</MockData>
       </div>
       <div className="text-xs text-muted-foreground mt-0.5 font-mono uppercase tracking-wider">
         {label}
@@ -50,8 +51,8 @@ function DimensionBar({ label, value, color, delay }: {
       className="space-y-1.5"
     >
       <div className="flex justify-between items-center">
-        <span className="text-xs text-muted-foreground">{label}</span>
-        <span className="text-xs font-mono text-foreground">{value}%</span>
+        <span className="text-xs text-muted-foreground"><MockData>{label}</MockData></span>
+        <span className="text-xs font-mono text-foreground"><MockData>{value}%</MockData></span>
       </div>
       <div className="h-1.5 rounded-full bg-muted overflow-hidden">
         <motion.div
@@ -120,7 +121,7 @@ export default function Dashboard() {
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-lg">{platform.icon}</span>
-                    <span className="text-xs font-medium text-foreground truncate">{platform.name}</span>
+                    <span className="text-xs font-medium text-foreground truncate"><MockData>{platform.name}</MockData></span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1">
@@ -129,10 +130,10 @@ export default function Dashboard() {
                         style={{ backgroundColor: platform.status === 'indexed' ? 'hsl(160, 84%, 39%)' : platform.status === 'processing' ? 'hsl(263, 70%, 50%)' : 'hsl(36, 100%, 44%)' }}
                       />
                       <span className="text-[10px] font-mono text-muted-foreground capitalize">
-                        {platform.status.replace('_', ' ')}
+                        <MockData>{platform.status.replace('_', ' ')}</MockData>
                       </span>
                     </div>
-                    <span className="text-[10px] font-mono text-muted-foreground">{platform.insightPotential}%</span>
+                    <span className="text-[10px] font-mono text-muted-foreground"><MockData>{platform.insightPotential}%</MockData></span>
                   </div>
                 </div>
               ))}
@@ -155,7 +156,7 @@ export default function Dashboard() {
               {Object.entries(systemStatus).map(([key, value]) => (
                 <div key={key} className="flex justify-between items-center">
                   <span className="text-xs text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                  <span className="text-xs font-mono text-foreground">{value}</span>
+                  <span className="text-xs font-mono text-foreground"><MockData>{value}</MockData></span>
                 </div>
               ))}
             </div>
@@ -174,9 +175,9 @@ export default function Dashboard() {
               {processingQueue.map((item) => (
                 <div key={item.source} className="space-y-1.5">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-foreground">{item.source}</span>
+                    <span className="text-xs text-foreground"><MockData>{item.source}</MockData></span>
                     <span className="text-[10px] font-mono text-muted-foreground">
-                      {item.status === 'processing' ? `${item.progress}%` : 'Queued'}
+                      <MockData>{item.status === 'processing' ? `${item.progress}%` : 'Queued'}</MockData>
                     </span>
                   </div>
                   <div className="h-1 rounded-full bg-muted overflow-hidden">
@@ -206,7 +207,7 @@ export default function Dashboard() {
               {Object.entries(knowledgeBaseStats).map(([key, value]) => (
                 <div key={key}>
                   <div className="text-lg font-heading font-bold text-foreground">
-                    {typeof value === 'number' ? value.toLocaleString() : value}
+                    <MockData>{typeof value === 'number' ? value.toLocaleString() : value}</MockData>
                   </div>
                   <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
                     {key.replace(/([A-Z])/g, ' $1').trim()}
@@ -226,10 +227,10 @@ export default function Dashboard() {
               <h3 className="text-xs font-heading font-semibold text-primary uppercase tracking-wider">Next Steps</h3>
             </div>
             <ul className="space-y-1.5">
-              <li className="text-xs text-muted-foreground">• Upload LinkedIn data export</li>
-              <li className="text-xs text-muted-foreground">• Process YouTube watch history</li>
-              <li className="text-xs text-muted-foreground">• Connect Notion workspace</li>
-              <li className="text-xs text-muted-foreground">• Run identity profile v0.4</li>
+              <li className="text-xs text-muted-foreground"><MockData>• Upload LinkedIn data export</MockData></li>
+              <li className="text-xs text-muted-foreground"><MockData>• Process YouTube watch history</MockData></li>
+              <li className="text-xs text-muted-foreground"><MockData>• Connect Notion workspace</MockData></li>
+              <li className="text-xs text-muted-foreground"><MockData>• Run identity profile v0.4</MockData></li>
             </ul>
           </motion.div>
         </div>

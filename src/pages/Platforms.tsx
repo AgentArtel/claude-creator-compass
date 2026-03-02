@@ -5,6 +5,7 @@ import { platforms, platformCategories, statusLabels, type Platform, type Platfo
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { MockData } from "@/components/MockData";
 
 const statusSteps: PlatformStatus[] = ['not_started', 'exporting', 'uploaded', 'processing', 'indexed'];
 
@@ -18,7 +19,7 @@ function StatusBadge({ status }: { status: PlatformStatus }) {
   };
   return (
     <span className={cn("text-[10px] font-mono px-2 py-0.5 rounded-full border", colorMap[status])}>
-      {statusLabels[status]}
+      <MockData>{statusLabels[status]}</MockData>
     </span>
   );
 }
@@ -41,20 +42,20 @@ function PlatformCard({ platform, onClick }: { platform: Platform; onClick: () =
             {platform.icon}
           </div>
           <div>
-            <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">{platform.name}</div>
-            <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">{platform.category}</div>
+            <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors"><MockData>{platform.name}</MockData></div>
+            <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider"><MockData>{platform.category}</MockData></div>
           </div>
         </div>
         <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
       </div>
-      <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{platform.description}</p>
+      <p className="text-xs text-muted-foreground mb-3 line-clamp-2"><MockData>{platform.description}</MockData></p>
       <div className="flex items-center justify-between">
         <StatusBadge status={platform.status} />
         <div className="flex items-center gap-1">
           <div className="h-1 w-12 rounded-full bg-muted overflow-hidden">
             <div className="h-full rounded-full bg-primary" style={{ width: `${platform.insightPotential}%` }} />
           </div>
-          <span className="text-[10px] font-mono text-muted-foreground">{platform.insightPotential}%</span>
+          <span className="text-[10px] font-mono text-muted-foreground"><MockData>{platform.insightPotential}%</MockData></span>
         </div>
       </div>
     </motion.div>
@@ -103,9 +104,9 @@ function PlatformDetail({ platform, onClose, onAdvanceStatus }: {
             {platform.icon}
           </div>
           <div>
-            <h2 className="text-lg font-heading font-bold text-foreground">{platform.name}</h2>
+            <h2 className="text-lg font-heading font-bold text-foreground"><MockData>{platform.name}</MockData></h2>
             <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-[10px] font-mono text-muted-foreground uppercase">{platform.category}</span>
+              <span className="text-[10px] font-mono text-muted-foreground uppercase"><MockData>{platform.category}</MockData></span>
               <StatusBadge status={platform.status} />
             </div>
           </div>
@@ -136,7 +137,7 @@ function PlatformDetail({ platform, onClose, onAdvanceStatus }: {
         {/* Description */}
         <div>
           <h3 className="text-xs font-heading font-semibold text-foreground uppercase tracking-wider mb-2">About</h3>
-          <p className="text-sm text-muted-foreground">{platform.description}</p>
+          <p className="text-sm text-muted-foreground"><MockData>{platform.description}</MockData></p>
         </div>
 
         {/* Data Types */}
@@ -144,7 +145,7 @@ function PlatformDetail({ platform, onClose, onAdvanceStatus }: {
           <h3 className="text-xs font-heading font-semibold text-foreground uppercase tracking-wider mb-2">Data Types</h3>
           <div className="flex flex-wrap gap-1.5">
             {platform.dataTypes.map(dt => (
-              <Badge key={dt} variant="outline" className="text-[10px] font-mono">{dt}</Badge>
+              <Badge key={dt} variant="outline" className="text-[10px] font-mono"><MockData>{dt}</MockData></Badge>
             ))}
           </div>
         </div>
@@ -156,7 +157,7 @@ function PlatformDetail({ platform, onClose, onAdvanceStatus }: {
             {platform.exportInstructions.map((step, i) => (
               <li key={i} className="text-xs text-muted-foreground flex gap-2">
                 <span className="font-mono text-primary">{i + 1}.</span>
-                {step}
+                <MockData>{step}</MockData>
               </li>
             ))}
           </ol>
@@ -167,7 +168,7 @@ function PlatformDetail({ platform, onClose, onAdvanceStatus }: {
           <h3 className="text-xs font-heading font-semibold text-foreground uppercase tracking-wider mb-2">Analysis Capabilities</h3>
           <div className="flex flex-wrap gap-1.5">
             {platform.analysisCapabilities.map(cap => (
-              <span key={cap} className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-secondary/10 text-secondary border border-secondary/20">{cap}</span>
+              <span key={cap} className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-secondary/10 text-secondary border border-secondary/20"><MockData>{cap}</MockData></span>
             ))}
           </div>
         </div>
@@ -218,7 +219,7 @@ export default function Platforms() {
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         <h1 className="text-2xl font-heading font-bold text-foreground">Data Platforms</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {platformData.length} platforms • {platformData.filter(p => p.status === 'indexed').length} indexed • {platformData.filter(p => p.status !== 'not_started').length} active
+          <MockData>{platformData.length} platforms • {platformData.filter(p => p.status === 'indexed').length} indexed • {platformData.filter(p => p.status !== 'not_started').length} active</MockData>
         </p>
       </motion.div>
 
