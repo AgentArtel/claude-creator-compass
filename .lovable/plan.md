@@ -1,28 +1,51 @@
 
 
-# Wire Platforms Page to Supabase
+# Wire Dashboard Stats to Supabase
 
-## What Changes
+The four stat cards and the Knowledge Base panel currently read from `src/data/dashboard.ts`. All the data needed already exists in Supabase tables and the `usePlatforms` hook.
 
-1. **Create `src/hooks/usePlatforms.ts`** — A React Query hook that fetches from the `platforms` table via `supabase.from('platforms').select('*')`. Maps the DB row shape (snake_case JSONB fields like `data_types`, `export_instructions`, `analysis_capabilities`, `insight_potential`) to the frontend `Platform` type. Also fetches the user's `platform_imports` to determine per-platform status.
+## What changes
 
-2. **Update `src/pages/Platforms.tsx`** — Replace `import { platforms } from "@/data/platforms"` with the `usePlatforms` hook. Show a loading skeleton while fetching. Remove `MockData` wrappers from platform data (it's now real). Keep the `statusSteps` and `advanceStatus` logic but wire it to update `platform_imports` in Supabase instead of local state.
+### 1. Create `src/hooks/useDashboardStats.ts`
+A React Query hook that fetches real counts from Supabase:
+- **Platforms Connected**: count of platforms where user has at least one import with status `processed` -- derived from `platform_imports`
+- **Sources Processed**: count of `platform_imports` with status `processed`
+- **Profile Completion**: derived from `profile_dimensions` -- percentage of the 8 dimension types that have at least one row
+- **Knowledge Vectors**: count from `knowledge_chunks` table
 
-3. **Update `src/pages/Dashboard.tsx`** — Replace `import { platforms } from "@/data/platforms"` with the same hook for the "Data Sources" grid section. Remove `MockData` wrappers from platform-sourced values.
+Also fetch **Knowledge Base** stats:
+- `vectorChunks`: count of `knowledge_chunks`
+- `platforms`: count of distinct `platform_id` in `knowledge_chunks`
+- `dimensions`: hardcoded 1536 (embedding model constant, keep as-is)
+- `dateRange`: min/max `created_at` from `knowledge_chunks`, formatted
 
-4. **Update `src/data/platforms.ts`** — Keep only the type definitions (`Platform`, `PlatformStatus`, `statusLabels`, `statusColors`, `platformCategories`) and remove the hardcoded `platforms` array. The DB `platform_category` enum uses lowercase (`core`, `social`, etc.) so the category filter labels will map from lowercase DB values to display labels.
+And **Processing Queue**: query `platform_imports` where status is `processing` or `pending`/`exporting`/`uploaded`, join with `platforms` for name. Real queue, not mock.
 
-## Key Mapping (DB → Frontend)
+### 2. Update `src/pages/Dashboard.tsx`
+- Replace `identityStats` import with `useDashboardStats()` hook data
+- Replace `processingQueue` import with real queue from the hook
+- Replace `knowledgeBaseStats` import with real stats from the hook
+- Remove `<MockData>` wrappers from all stat values that are now data-driven
+- Keep `<MockData>` on Identity Dimensions (still from `profile_dimensions`, which maps to the mock `identityDimensions` array), System Status, and Next Steps since those remain static
+- Show skeleton loading states while fetching
 
-- `data_types` (JSONB array) → `dataTypes: string[]`
-- `export_instructions` (JSONB array) → `exportInstructions: string[]`
-- `analysis_capabilities` (JSONB array) → `analysisCapabilities: string[]`
-- `insight_potential` (int) → `insightPotential: number`
-- `category` (enum, lowercase) → displayed with capitalize
-- Status comes from `platform_imports` table (latest import per platform), defaulting to `'not_started'` if no import exists
+### 3. Clean up `src/data/dashboard.ts`
+- Remove `identityStats`, `processingQueue`, and `knowledgeBaseStats` exports (now fetched live)
+- Keep `identityDimensions` and `systemStatus` (still mock/static)
+
+## Data sources
+
+| Stat | Supabase query |
+|------|---------------|
+| Platforms Connected | `select count(distinct platform_id) from platform_imports where status = 'processed'` |
+| Sources Processed | `select count(*) from platform_imports where status = 'processed'` |
+| Profile Completion | `select count(distinct dimension) from profile_dimensions` / 8 * 100 |
+| Knowledge Vectors | `select count(*) from knowledge_chunks` |
+| Processing Queue | `select pi.*, p.name, p.icon from platform_imports pi join platforms p on pi.platform_id = p.id where pi.status in ('pending','exporting','uploaded','processing') order by pi.created_at` |
+
+No database migrations needed -- all tables and RLS policies already exist.
 
 ## Files
-
-- **New**: `src/hooks/usePlatforms.ts`
-- **Edit**: `src/pages/Platforms.tsx`, `src/pages/Dashboard.tsx`, `src/data/platforms.ts`
+- **New**: `src/hooks/useDashboardStats.ts`
+- **Edit**: `src/pages/Dashboard.tsx`, `src/data/dashboard.ts`
 
