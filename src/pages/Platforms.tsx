@@ -82,32 +82,12 @@ function PlatformDetail({ platform, onClose, onAdvanceStatus, onFileUpload }: {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [dragOver, setDragOver] = useState(false);
 
-  const actionLabels: Record<PlatformStatus, { label: string; icon: React.ElementType }> = {
-    not_started: { label: 'Mark as Exporting', icon: Clock },
-    exporting: { label: 'Upload Data', icon: Upload },
-    uploaded: { label: 'Process Data', icon: Play },
-    processing: { label: 'Processing...', icon: Play },
-    indexed: { label: 'Indexed ✓', icon: CheckCircle2 },
-  };
-
-  const action = actionLabels[platform.status];
-
-  const handleActionClick = () => {
-    if (platform.status === 'exporting') {
-      fileInputRef.current?.click();
-    } else {
-      onAdvanceStatus();
-    }
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const triggerUpload = async (file: File) => {
     setUploading(true);
     setUploadProgress(10);
     try {
-      // Simulate progress since Supabase JS doesn't expose upload progress
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => Math.min(prev + 15, 85));
       }, 300);
@@ -121,6 +101,20 @@ function PlatformDetail({ platform, onClose, onAdvanceStatus, onFileUpload }: {
       setUploadProgress(0);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await triggerUpload(file);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    await triggerUpload(file);
   };
 
   return (
@@ -212,6 +206,26 @@ function PlatformDetail({ platform, onClose, onAdvanceStatus, onFileUpload }: {
           </div>
         </div>
 
+        {platform.status === 'exporting' && !uploading && (
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            className={cn(
+              "border-2 border-dashed rounded-lg p-6 flex flex-col items-center gap-2 cursor-pointer transition-colors",
+              dragOver
+                ? "border-primary bg-primary/5"
+                : "border-border/50 hover:border-border"
+            )}
+          >
+            <Upload className="w-6 h-6 text-muted-foreground" />
+            <p className="text-xs text-muted-foreground text-center">
+              Drag & drop your export file here, or <span className="text-primary underline">click to browse</span>
+            </p>
+          </div>
+        )}
+
         {uploading && (
           <div className="space-y-1.5">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -231,11 +245,28 @@ function PlatformDetail({ platform, onClose, onAdvanceStatus, onFileUpload }: {
 
         <Button
           className="w-full"
-          onClick={handleActionClick}
+          onClick={() => {
+            if (platform.status === 'exporting') {
+              fileInputRef.current?.click();
+            } else {
+              onAdvanceStatus();
+            }
+          }}
           disabled={platform.status === 'indexed' || platform.status === 'processing' || uploading}
         >
-          {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <action.icon className="w-4 h-4" />}
-          {uploading ? 'Uploading...' : action.label}
+          {uploading ? (
+            <><Loader2 className="w-4 h-4 animate-spin" /> Uploading...</>
+          ) : platform.status === 'indexed' ? (
+            <><CheckCircle2 className="w-4 h-4" /> Indexed ✓</>
+          ) : platform.status === 'processing' ? (
+            <><Play className="w-4 h-4" /> Processing...</>
+          ) : platform.status === 'uploaded' ? (
+            <><Play className="w-4 h-4" /> Process Data</>
+          ) : platform.status === 'exporting' ? (
+            <><Upload className="w-4 h-4" /> Upload Data</>
+          ) : (
+            <><Clock className="w-4 h-4" /> Mark as Exporting</>
+          )}
         </Button>
       </div>
     </motion.div>
