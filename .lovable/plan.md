@@ -1,45 +1,33 @@
 
 
-# Add Real File Upload to Platform Detail
+# Add Drag-and-Drop Upload to Platform Detail + E2E Test
 
-## Problem
-The "Upload Data" button only advances the status enum — no file is actually uploaded to the `data-exports` storage bucket.
+## Changes to `src/pages/Platforms.tsx` — PlatformDetail component
 
-## Changes to `src/pages/Platforms.tsx`
+### 1. Add drag-and-drop zone
+- Add `dragOver` state (`boolean`)
+- Add `onDragOver`, `onDragLeave`, `onDrop` handlers to a drop zone div
+- When status is `exporting`, show a dashed-border drop zone area above the action button with "Drag & drop your export file here, or click to browse"
+- On drop: extract `e.dataTransfer.files[0]`, call the same upload flow as `handleFileChange`
+- Visual feedback: highlight border with `border-primary` and `bg-primary/5` when dragging over
 
-### PlatformDetail component
-- Add a hidden `<input type="file" ref={fileInputRef}>` 
-- Add `uploading` and `uploadProgress` state
-- When status is `exporting` and user clicks the action button, trigger the file input instead of calling `onAdvanceStatus`
-- On file select:
-  1. Get the current user
-  2. Upload file to `data-exports` bucket at path `{user.id}/{platform.id}/{filename}`
-  3. Find the latest `platform_imports` row for this platform
-  4. Update it with `status: 'uploaded'`, `file_path`, and `file_size_bytes`
-  5. Invalidate queries, show toast
-- Show a progress bar (using the existing Progress component) during upload
-- Show error toast on failure
+### 2. Drop zone UI (only visible when status === 'exporting')
+- Dashed border container with Upload icon, instructional text
+- Clicking anywhere in the zone triggers `fileInputRef.current?.click()`
+- On drag over: border goes solid primary, background tints
+- Replaces the need to click the "Upload Data" button (though button still works as fallback)
 
-### PlatformDetail props
-- Add `onFileUploaded` callback prop (replaces `onAdvanceStatus` for the exporting step)
-- Keep `onAdvanceStatus` for other steps (not_started → exporting, uploaded → processing)
+### 3. Refactor
+- Extract the upload-with-progress logic into a shared `triggerUpload(file)` function used by both `handleFileChange` and `onDrop`
+- Keep the existing hidden `<input type="file">` and progress bar
 
-### Platforms parent component
-- Add `handleFileUpload` function that receives the file, does the Supabase storage upload + DB update
-- Pass it to `PlatformDetail` as `onFileUploaded`
-- The `advanceStatus` function stays unchanged for non-upload steps
-
-### Imports to add
-- `useRef` from React
-- `Progress` from `@/components/ui/progress`
-- `toast` from `sonner`
-
-## Flow
-```text
-not_started → [Mark as Exporting] → exporting
-exporting   → [Upload Data] → file picker → upload to bucket → update DB → uploaded
-uploaded    → [Process Data] → processing
-```
+### 4. E2E browser test after implementation
+- Navigate to `/platforms`, log in if needed
+- Click a platform card
+- Click "Mark as Exporting" 
+- Verify the drop zone and "Upload Data" button appear
+- Use the file input to upload a test file
+- Verify toast success and status change to "Uploaded"
 
 ## Files
 - **Edit**: `src/pages/Platforms.tsx`
